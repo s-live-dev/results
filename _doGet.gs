@@ -51,6 +51,8 @@ function getvpStyleLarge(players,targets) {
     return HtmlService.createHtmlOutputFromFile('vpstyles_100tgL18').getContent();
   } else if (players <= 30) {
     return HtmlService.createHtmlOutputFromFile('vpstyles_100tgL30').getContent();
+  } else if (players > 30 && targets != 200) {
+    return HtmlService.createHtmlOutputFromFile('vpstyles_100tgL30').getContent();
   } else if (players > 30 && targets == 200) {
     return HtmlService.createHtmlOutputFromFile('vpstyles_100tgL60').getContent();
   }
