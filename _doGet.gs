@@ -16,16 +16,18 @@ function doGet(e) {
   // 各県毎のリザルト用スプレッドシート,S-LIVE Results のチャンネル設定でsを固定
   template.s = (e && e.parameter && e.parameter.s) || '';
   template.sn = (e && e.parameter && e.parameter.sn) || '' //'トラップ'; // 'スキート'
+  // テストモードパラメーター追加（文字列 "true" の場合のみテストモード有効）
+  template.showTest = (e && e.parameter && e.parameter.showTest === 'true') || false;
 
-  // include() 関数にsidとsnを直接渡す
+  // include() 関数にsid、sn、showTestを直接渡す
   template.getHeader = function () {
-    return include('vpsc_title-header', template.s, template.sn);
+    return include('vpsc_title-header', template.s, template.sn, template.showTest);
   };
   template.getFooter = function () {
-    return include('vpsc_footer', template.s, template.sn);
+    return include('vpsc_footer', template.s, template.sn, template.showTest);
   };
   template.getTables = function () {
-    return include('vpsc_tables', template.s, template.sn);
+    return include('vpsc_tables', template.s, template.sn, template.showTest);
   };
 
   return template.evaluate()
@@ -34,10 +36,11 @@ function doGet(e) {
 }
 
 // 分割されたHTMLをメインのHTMLでインクルードする関数
-function include(filename, s, sn) {
+function include(filename, s, sn, showTest) {
   var template = HtmlService.createTemplateFromFile(filename);
   template.s = s;
   template.sn = sn;
+  template.showTest = showTest;
   return template.evaluate().getContent();
 }
 
@@ -59,9 +62,9 @@ function getvpStyleLarge(players,targets) {
 }
 
 // データオブジェクトをクライアントサイドへまとめて渡す関数
-function getCombinedData(s, sn) {
-  var eventInfoData = getEventInfoData(s); // 既存のサーバーサイド関数を呼び出し
-  var resultData = getResultData(s, sn); // 同じく既存のサーバーサイド関数を呼び出し
+function getCombinedData(s, sn, showTest) {
+  var eventInfoData = getEventInfoData(s, showTest); // showTestパラメーターを追加
+  var resultData = getResultData(s, sn); // 既存のサーバーサイド関数を呼び出し
   // Logger.log(eventInfoData);
   // Logger.log(resultData);
   return {
@@ -126,16 +129,25 @@ function getResultData(s, sn) {
   return dataC;
 }
 
-function getEventInfoData(s) {
+function getEventInfoData(s, showTest) {
+  // showTestのデフォルト値設定（文字列 "true" の場合のみテストモード有効）
+  showTest = (showTest === 'true' || showTest === true) || false;
 
   var sheet = SpreadsheetApp.openById(s).getSheetByName('大会情報');
   var eData = sheet.getDataRange().getValues().slice(1, 3); // 最大2件のデータを取得
-  // データが存在しない場合は削除
 
   // eData から列　主催協会:[0] が空の行を削除
   eData = eData.filter(function (row) {
     return row[0] !== ''; // インデックス0の列が空ではない行だけを残す
   });
+
+  // テストモード確認: showTestがfalseの場合、大会名に"テスト"が含まれる行を除外
+  if (!showTest) {
+    eData = eData.filter(function (row) {
+      var eventName = row[1] || ''; // 大会名は[1]列目
+      return eventName.indexOf('テスト') === -1; // "テスト"が含まれていない行のみ残す
+    });
+  }
 
   return eData.map(function (row) {
     // OpenWeatherMap APIから気象情報を取得
